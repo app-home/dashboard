@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/app-home/dashboard/compare/dashboard-v1.0.0...dashboard-v1.1.0) (2026-06-20)
+
+
+### Features
+
+* configuracion del usuario sincronizada con Google Drive (appDataFolder) ([0cfba71](https://github.com/app-home/dashboard/commit/0cfba713a7aea8e7f576b57b6e6b8711c289ba02))
+* configuración del usuario sincronizada con Google Drive (appDataFolder) ([be80371](https://github.com/app-home/dashboard/commit/be803718688c9dc34d5c3dbc603c1517ea001d5a))
+
 ## 1.0.0 (2026-06-20)
 
 
