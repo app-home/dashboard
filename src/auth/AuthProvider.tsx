@@ -10,6 +10,7 @@ import {
 } from '@/auth/google'
 
 const STORAGE_KEY = 'dashboard.auth.user'
+const LAST_LOGIN_KEY = 'dashboard.auth.lastLogin'
 
 /** Lee el perfil guardado para mantener la sesión visible tras recargar. */
 function readStoredUser(): AuthUser | null {
@@ -27,6 +28,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // El perfil se persiste; el access token vive solo en memoria (caduca en ~1h).
   const [user, setUser] = useState<AuthUser | null>(readStoredUser)
   const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [lastLoginAt, setLastLoginAt] = useState<string | null>(() =>
+    localStorage.getItem(LAST_LOGIN_KEY),
+  )
   const [loading, setLoading] = useState(false)
 
   const login = useCallback(async () => {
@@ -35,9 +39,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await loadGis()
       const token = await requestAccessToken()
       const profile = await fetchGoogleProfile(token)
+      const now = new Date().toISOString()
       setAccessToken(token)
       setUser(profile)
+      setLastLoginAt(now)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
+      localStorage.setItem(LAST_LOGIN_KEY, now)
     } finally {
       setLoading(false)
     }
@@ -47,7 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (accessToken) revokeAccessToken(accessToken)
     setAccessToken(null)
     setUser(null)
+    setLastLoginAt(null)
     localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(LAST_LOGIN_KEY)
   }, [accessToken])
 
   const value = useMemo(
@@ -56,10 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: user !== null,
       loading,
       accessToken,
+      lastLoginAt,
       login,
       logout,
     }),
-    [user, loading, accessToken, login, logout],
+    [user, loading, accessToken, lastLoginAt, login, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

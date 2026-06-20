@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
+import Settings from '@/pages/Settings'
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
       {/* Rutas protegidas: requieren sesión */}
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
 
       {/* Cualquier otra ruta vuelve al inicio */}

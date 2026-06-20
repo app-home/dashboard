@@ -4,23 +4,29 @@ import {
   Box,
   Button,
   Container,
+  IconButton,
   Toolbar,
+  Tooltip,
   Typography,
 } from '@mui/material'
+import SettingsIcon from '@mui/icons-material/Settings'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
 
 /**
  * Página protegida de ejemplo. Solo accesible con sesión iniciada.
- * Su contenido real se desarrollará en issues posteriores.
  */
 export default function Dashboard() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <Box>
       <AppBar position="static">
         <Toolbar>
-          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexGrow: 1 }}>
+          <Box
+            sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexGrow: 1 }}
+          >
             <Typography variant="h6" component="div">
               Dashboard
             </Typography>
@@ -36,11 +42,21 @@ export default function Dashboard() {
               <Typography variant="body2">{user.name}</Typography>
             </Box>
           )}
+          <Tooltip title="Configuración">
+            <IconButton
+              color="inherit"
+              onClick={() => navigate('/settings')}
+              aria-label="Configuración"
+            >
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
           <Button color="inherit" onClick={logout}>
             Cerrar sesión
           </Button>
         </Toolbar>
       </AppBar>
+
       <Container sx={{ py: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Bienvenido{user ? `, ${user.name}` : ''}

@@ -13,6 +13,8 @@ export interface AuthContextValue {
   loading: boolean
   /** Access token de Google (en memoria). Base para acceder a Drive (issue #5). */
   accessToken: string | null
+  /** Fecha ISO del último inicio de sesión (persistida por dispositivo). */
+  lastLoginAt: string | null
   /** Inicia sesión con Google Identity Services. */
   login: () => Promise<void>
   logout: () => void
