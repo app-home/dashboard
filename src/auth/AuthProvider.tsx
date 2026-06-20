@@ -2,10 +2,16 @@ import { useCallback, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AuthContext } from '@/auth/context'
 import type { AuthUser } from '@/auth/context'
+import {
+  fetchGoogleProfile,
+  loadGis,
+  requestAccessToken,
+  revokeAccessToken,
+} from '@/auth/google'
 
 const STORAGE_KEY = 'dashboard.auth.user'
 
-/** Lee la sesión guardada (base para la persistencia real de GIS en el #4). */
+/** Lee el perfil guardado para mantener la sesión visible tras recargar. */
 function readStoredUser(): AuthUser | null {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return null
@@ -18,35 +24,42 @@ function readStoredUser(): AuthUser | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Inicialización perezosa: restaura la sesión de forma síncrona al montar.
+  // El perfil se persiste; el access token vive solo en memoria (caduca en ~1h).
   const [user, setUser] = useState<AuthUser | null>(readStoredUser)
+  const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
   const login = useCallback(async () => {
-    // SIMULADO: en el issue #4 esto se reemplaza por el flujo real de GIS.
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    const mockUser: AuthUser = {
-      name: 'Usuario de prueba',
-      email: 'usuario@example.com',
+    setLoading(true)
+    try {
+      await loadGis()
+      const token = await requestAccessToken()
+      const profile = await fetchGoogleProfile(token)
+      setAccessToken(token)
+      setUser(profile)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
+    } finally {
+      setLoading(false)
     }
-    setUser(mockUser)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mockUser))
   }, [])
 
   const logout = useCallback(() => {
+    if (accessToken) revokeAccessToken(accessToken)
+    setAccessToken(null)
     setUser(null)
     localStorage.removeItem(STORAGE_KEY)
-  }, [])
+  }, [accessToken])
 
   const value = useMemo(
     () => ({
       user,
       isAuthenticated: user !== null,
-      // La restauración es síncrona por ahora; el #4 (GIS asíncrono) lo usará.
-      loading: false,
+      loading,
+      accessToken,
       login,
       logout,
     }),
-    [user, login, logout],
+    [user, loading, accessToken, login, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

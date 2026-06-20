@@ -9,9 +9,11 @@ export interface AuthUser {
 export interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
-  /** true mientras se restaura la sesión inicial */
+  /** true mientras se procesa el inicio de sesión */
   loading: boolean
-  /** Inicia sesión. SIMULADO en el issue #3; se reemplaza por GIS en el #4. */
+  /** Access token de Google (en memoria). Base para acceder a Drive (issue #5). */
+  accessToken: string | null
+  /** Inicia sesión con Google Identity Services. */
   login: () => Promise<void>
   logout: () => void
 }
