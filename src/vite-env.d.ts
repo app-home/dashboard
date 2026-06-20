@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="google.accounts" />
 
 /** Versión del package.json inyectada en build (ver `define` en vite.config.ts). */
 declare const __APP_VERSION__: string
