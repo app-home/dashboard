@@ -9,6 +9,7 @@ import {
   requestAccessToken,
   revokeAccessToken,
 } from '@/auth/google'
+import { getUserPermissions } from '@/auth/permissions'
 import { DRIVE_APPDATA_SCOPE } from '@/storage/driveConfig'
 
 const STORAGE_KEY = 'dashboard.auth.user'
@@ -19,7 +20,12 @@ function readStoredUser(): AuthUser | null {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return null
   try {
-    return JSON.parse(raw) as AuthUser
+    const user = JSON.parse(raw) as AuthUser
+    return {
+      ...user,
+      role: user.role ?? 'user',
+      permissions: user.permissions ?? [],
+    }
   } catch {
     localStorage.removeItem(STORAGE_KEY)
     return null
@@ -42,11 +48,17 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       const scopes = `${LOGIN_SCOPES} ${DRIVE_APPDATA_SCOPE}`
       const token = await requestAccessToken(scopes)
       const profile = await fetchGoogleProfile(token)
+      const { role, permissions } = await getUserPermissions(profile.email)
       const now = new Date().toISOString()
+      const userWithPermissions: AuthUser = {
+        ...profile,
+        role,
+        permissions,
+      }
       setAccessToken(token)
-      setUser(profile)
+      setUser(userWithPermissions)
       setLastLoginAt(now)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userWithPermissions))
       localStorage.setItem(LAST_LOGIN_KEY, now)
     } finally {
       setLoading(false)

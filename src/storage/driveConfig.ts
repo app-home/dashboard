@@ -1,3 +1,8 @@
+import type { Ingreso } from '@/storage/ingresos'
+import type { Gasto } from '@/storage/gastos'
+import type { MetaAhorro } from '@/storage/ahorros'
+import type { Inversion } from '@/storage/inversiones'
+
 /**
  * Persistencia de la configuración del usuario en Google Drive.
  *
@@ -14,9 +19,30 @@ const LOCAL_KEY = 'dashboard.config'
 const DRIVE_FILES_URL = 'https://www.googleapis.com/drive/v3/files'
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files'
 
+export interface MenuItem {
+  id: string
+  label: string
+  icon: 'dashboard' | 'settings' | 'home' | 'notifications' | 'finanzas'
+  path: string
+  roles?: string[]
+  permissions?: string[]
+}
+
+export interface UserRole {
+  email: string
+  role: string
+  permissions: string[]
+}
+
 /** Ajustes del usuario. Ampliar según se necesiten más opciones. */
 export interface AppSettings {
   themeMode: 'light' | 'dark'
+  menu: MenuItem[]
+  users: UserRole[]
+  ingresos: Ingreso[]
+  gastos: Gasto[]
+  ahorros: MetaAhorro[]
+  inversiones: Inversion[]
 }
 
 /** Documento de configuración versionado (facilita migraciones futuras). */
@@ -26,9 +52,32 @@ export interface AppConfig {
   updatedAt: string
 }
 
+export const DEFAULT_MENU: MenuItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/' },
+  { id: 'notifications', label: 'Notificaciones', icon: 'notifications', path: '/notifications' },
+  { id: 'finanzas', label: 'Finanzas', icon: 'finanzas', path: '/finanzas' },
+  { id: 'settings', label: 'Configuración', icon: 'settings', path: '/settings' },
+]
+
+export const DEFAULT_USERS: UserRole[] = [
+  {
+    email: 'manuelflorezw@gmail.com',
+    role: 'admin',
+    permissions: ['users.manage', 'settings.view'],
+  },
+]
+
 export const DEFAULT_CONFIG: AppConfig = {
   version: 1,
-  settings: { themeMode: 'light' },
+  settings: {
+    themeMode: 'light',
+    menu: DEFAULT_MENU,
+    users: DEFAULT_USERS,
+    ingresos: [],
+    gastos: [],
+    ahorros: [],
+    inversiones: [],
+  },
   updatedAt: new Date(0).toISOString(),
 }
 
@@ -40,7 +89,8 @@ export function loadLocalConfig(): AppConfig {
   const raw = localStorage.getItem(LOCAL_KEY)
   if (!raw) return DEFAULT_CONFIG
   try {
-    return JSON.parse(raw) as AppConfig
+    const parsed = JSON.parse(raw) as AppConfig
+    return mergeConfig(parsed)
   } catch {
     return DEFAULT_CONFIG
   }
@@ -73,6 +123,36 @@ async function findConfigFileId(token: string): Promise<string | null> {
  * Carga la configuración desde Drive usando el access token existente.
  * Devuelve DEFAULT_CONFIG si el usuario aún no tiene config guardada.
  */
+function ensureDefaultItems(menu: MenuItem[]): MenuItem[] {
+  const result = [...menu]
+  for (const defaultItem of DEFAULT_MENU) {
+    const exists = result.some((item) => item.id === defaultItem.id)
+    if (!exists) {
+      const defaultIndex = DEFAULT_MENU.indexOf(defaultItem)
+      result.splice(defaultIndex, 0, { ...defaultItem })
+    }
+  }
+  return result
+}
+
+function mergeConfig(parsed: AppConfig): AppConfig {
+  const menu = parsed.settings?.menu ?? DEFAULT_CONFIG.settings.menu
+  return {
+    ...DEFAULT_CONFIG,
+    ...parsed,
+    settings: {
+      ...DEFAULT_CONFIG.settings,
+      ...parsed.settings,
+      menu: ensureDefaultItems(menu),
+      users: parsed.settings?.users ?? DEFAULT_CONFIG.settings.users,
+      ingresos: parsed.settings?.ingresos ?? DEFAULT_CONFIG.settings.ingresos,
+      gastos: parsed.settings?.gastos ?? DEFAULT_CONFIG.settings.gastos,
+      ahorros: parsed.settings?.ahorros ?? DEFAULT_CONFIG.settings.ahorros,
+      inversiones: parsed.settings?.inversiones ?? DEFAULT_CONFIG.settings.inversiones,
+    },
+  }
+}
+
 export async function loadConfigFromDrive(
   accessToken: string,
 ): Promise<AppConfig> {
@@ -83,7 +163,8 @@ export async function loadConfigFromDrive(
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (!res.ok) throw new Error('No se pudo descargar la configuración de Drive')
-  return (await res.json()) as AppConfig
+  const parsed = (await res.json()) as AppConfig
+  return mergeConfig(parsed)
 }
 
 /**
