@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/app-home/dashboard/compare/dashboard-v1.3.0...dashboard-v1.4.0) (2026-06-23)
+
+
+### Features
+
+* módulo de finanzas completo con auto-save a Drive y notificaciones reactivas ([3569bc5](https://github.com/app-home/dashboard/commit/3569bc59429ceb67abbcb9abaf10baa13c43df10))
+* modulo finanzas completo con auto-save a Drive y notificaciones reactivas ([c37131d](https://github.com/app-home/dashboard/commit/c37131d1a05b56115b530b404ff70c45fd743ff1))
+
 ## [1.3.0](https://github.com/app-home/dashboard/compare/dashboard-v1.2.0...dashboard-v1.3.0) (2026-06-23)
 
 
