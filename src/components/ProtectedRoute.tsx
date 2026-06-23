@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { Box, CircularProgress } from '@mui/material'
 import { useAuth } from '@/auth/useAuth'
+import Layout from '@/components/Layout'
 
 /**
  * Envuelve rutas que requieren sesión. Si no hay usuario autenticado,
@@ -17,5 +18,11 @@ export default function ProtectedRoute() {
     )
   }
 
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />
+  return isAuthenticated ? (
+    <Layout>
+      <Outlet />
+    </Layout>
+  ) : (
+    <Navigate to="/login" replace />
+  )
 }

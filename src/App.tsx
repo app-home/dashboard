@@ -3,6 +3,8 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Settings from '@/pages/Settings'
+import Notifications from '@/pages/Notifications'
+import Finanzas from '@/pages/Finanzas'
 
 function App() {
   return (
@@ -13,6 +15,8 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/finanzas" element={<Finanzas />} />
       </Route>
 
       {/* Cualquier otra ruta vuelve al inicio */}

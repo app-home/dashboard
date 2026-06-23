@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from '@/auth/AuthProvider'
 import { ThemeModeProvider } from '@/contexts/ThemeModeProvider'
+import { NotificationProvider } from '@/contexts/NotificationContext'
 import App from '@/App.tsx'
 
 createRoot(document.getElementById('root')!).render(
@@ -12,7 +13,9 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ThemeModeProvider>
         <AuthProvider>
-          <App />
+          <NotificationProvider>
+            <App />
+          </NotificationProvider>
         </AuthProvider>
       </ThemeModeProvider>
     </BrowserRouter>

@@ -4,6 +4,8 @@ export interface AuthUser {
   name: string
   email: string
   picture?: string
+  role: string
+  permissions: string[]
 }
 
 export interface AuthContextValue {
