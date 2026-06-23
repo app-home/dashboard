@@ -5,9 +5,11 @@ import type { AuthUser } from '@/auth/context'
 import {
   fetchGoogleProfile,
   loadGis,
+  LOGIN_SCOPES,
   requestAccessToken,
   revokeAccessToken,
 } from '@/auth/google'
+import { DRIVE_APPDATA_SCOPE } from '@/storage/driveConfig'
 
 const STORAGE_KEY = 'dashboard.auth.user'
 const LAST_LOGIN_KEY = 'dashboard.auth.lastLogin'
@@ -24,7 +26,7 @@ function readStoredUser(): AuthUser | null {
   }
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   // El perfil se persiste; el access token vive solo en memoria (caduca en ~1h).
   const [user, setUser] = useState<AuthUser | null>(readStoredUser)
   const [accessToken, setAccessToken] = useState<string | null>(null)
@@ -37,7 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     try {
       await loadGis()
-      const token = await requestAccessToken()
+      const scopes = `${LOGIN_SCOPES} ${DRIVE_APPDATA_SCOPE}`
+      const token = await requestAccessToken(scopes)
       const profile = await fetchGoogleProfile(token)
       const now = new Date().toISOString()
       setAccessToken(token)
