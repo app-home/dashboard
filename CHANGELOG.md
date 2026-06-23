@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.0](https://github.com/app-home/dashboard/compare/dashboard-v1.2.0...dashboard-v1.3.0) (2026-06-23)
+
+
+### Features
+
+* agregar Home icon y soporte de tema claro/oscuro ([e043170](https://github.com/app-home/dashboard/commit/e0431707e1e740e3f42b1a579f4561ff9bc2f632))
+* pasar access token de Drive desde AuthContext a Drive operations ([7230dd8](https://github.com/app-home/dashboard/commit/7230dd87907eb207c09b6f01c06ebc31b76f3396))
+* pasar access token de Drive desde AuthContext a Drive operations ([f0237dd](https://github.com/app-home/dashboard/commit/f0237ddfade3450cd7c91fa3e3483db07e8ebbc8))
+
 ## [1.2.0](https://github.com/app-home/dashboard/compare/dashboard-v1.1.0...dashboard-v1.2.0) (2026-06-23)
 
 
