@@ -28,8 +28,9 @@ function formatDate(iso: string | null, empty: string): string {
  * ajustes del usuario con su Google Drive (carpeta privada de la app).
  */
 export default function Settings() {
-  const { lastLoginAt } = useAuth()
-  const { config, syncing, error, saveToDrive, loadFromDrive } = useConfig()
+  const { lastLoginAt, accessToken } = useAuth()
+  const { config, syncing, error, saveToDrive, loadFromDrive } =
+    useConfig(accessToken)
 
   return (
     <Box>

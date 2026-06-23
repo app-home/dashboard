@@ -2,11 +2,9 @@
  * Persistencia de la configuración del usuario en Google Drive.
  *
  * Usa la carpeta de datos de aplicación (`appDataFolder`): oculta, por-usuario
- * y por-app. El scope `drive.appdata` se pide de forma incremental (no en el
- * login). Si el usuario no autoriza Drive, se usa `localStorage` como fallback.
+ * y por-app. El access token con el scope `drive.appdata` se solicita durante
+ * el login. Si el usuario no autoriza Drive, se usa `localStorage` como fallback.
  */
-
-import { loadGis, requestAccessToken } from '@/auth/google'
 
 export const DRIVE_APPDATA_SCOPE =
   'https://www.googleapis.com/auth/drive.appdata'
@@ -56,12 +54,6 @@ export function saveLocalConfig(config: AppConfig): void {
 /* Google Drive (appDataFolder)                                       */
 /* ------------------------------------------------------------------ */
 
-/** Pide (incrementalmente) un access token con el scope de Drive. */
-async function getDriveToken(): Promise<string> {
-  await loadGis()
-  return requestAccessToken(DRIVE_APPDATA_SCOPE)
-}
-
 /** Busca el id del config.json en appDataFolder, o null si no existe. */
 async function findConfigFileId(token: string): Promise<string | null> {
   const params = new URLSearchParams({
@@ -78,37 +70,40 @@ async function findConfigFileId(token: string): Promise<string | null> {
 }
 
 /**
- * Carga la configuración desde Drive. Pide autorización si hace falta.
+ * Carga la configuración desde Drive usando el access token existente.
  * Devuelve DEFAULT_CONFIG si el usuario aún no tiene config guardada.
  */
-export async function loadConfigFromDrive(): Promise<AppConfig> {
-  const token = await getDriveToken()
-  const id = await findConfigFileId(token)
+export async function loadConfigFromDrive(
+  accessToken: string,
+): Promise<AppConfig> {
+  const id = await findConfigFileId(accessToken)
   if (!id) return DEFAULT_CONFIG
 
   const res = await fetch(`${DRIVE_FILES_URL}/${id}?alt=media`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (!res.ok) throw new Error('No se pudo descargar la configuración de Drive')
   return (await res.json()) as AppConfig
 }
 
 /**
- * Guarda la configuración en Drive (crea o actualiza el config.json).
- * Sella `updatedAt` con la hora actual.
+ * Guarda la configuración en Drive (crea o actualiza el config.json)
+ * usando el access token existente. Sella `updatedAt` con la hora actual.
  */
-export async function saveConfigToDrive(config: AppConfig): Promise<AppConfig> {
-  const token = await getDriveToken()
+export async function saveConfigToDrive(
+  config: AppConfig,
+  accessToken: string,
+): Promise<AppConfig> {
   const toSave: AppConfig = { ...config, updatedAt: new Date().toISOString() }
   const content = JSON.stringify(toSave)
-  const id = await findConfigFileId(token)
+  const id = await findConfigFileId(accessToken)
 
   if (id) {
     // Actualiza solo el contenido (uploadType=media).
     const res = await fetch(`${DRIVE_UPLOAD_URL}/${id}?uploadType=media`, {
       method: 'PATCH',
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: content,
@@ -129,7 +124,7 @@ export async function saveConfigToDrive(config: AppConfig): Promise<AppConfig> {
     const res = await fetch(`${DRIVE_UPLOAD_URL}?uploadType=multipart`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': `multipart/related; boundary=${boundary}`,
       },
       body,
