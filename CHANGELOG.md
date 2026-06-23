@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/app-home/dashboard/compare/dashboard-v1.1.0...dashboard-v1.2.0) (2026-06-23)
+
+
+### Features
+
+* agregar Home icon y soporte de tema claro/oscuro ([125e237](https://github.com/app-home/dashboard/commit/125e237f1bede1db6c48600df361f66fd631d046))
+* agregar Home icon y soporte de tema claro/oscuro ([c2584ae](https://github.com/app-home/dashboard/commit/c2584ae65f0bbb3c14b26a2530c56cef3f7f1436))
+
 ## [1.1.0](https://github.com/app-home/dashboard/compare/dashboard-v1.0.0...dashboard-v1.1.0) (2026-06-20)
 
 
