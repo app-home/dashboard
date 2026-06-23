@@ -31,7 +31,8 @@ export function useConfig() {
     setSyncing(true)
     setError(null)
     try {
-      const saved = await saveConfigToDrive(config)
+      const current = loadLocalConfig()
+      const saved = await saveConfigToDrive(current)
       setConfig(saved)
       saveLocalConfig(saved)
     } catch (e) {
@@ -39,7 +40,7 @@ export function useConfig() {
     } finally {
       setSyncing(false)
     }
-  }, [config])
+  }, [])
 
   const loadFromDrive = useCallback(async () => {
     setSyncing(true)

@@ -1,24 +1,19 @@
 import {
   Alert,
-  AppBar,
   Box,
   Button,
   Card,
   CardContent,
   Container,
   Divider,
-  IconButton,
   Stack,
-  Toolbar,
-  Tooltip,
   Typography,
 } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/useAuth'
 import { useConfig } from '@/storage/useConfig'
+import Navbar from '@/components/Navbar'
 
 /** Formatea una fecha ISO; muestra un texto alterno si no hay valor. */
 function formatDate(iso: string | null, empty: string): string {
@@ -33,30 +28,12 @@ function formatDate(iso: string | null, empty: string): string {
  * ajustes del usuario con su Google Drive (carpeta privada de la app).
  */
 export default function Settings() {
-  const navigate = useNavigate()
   const { lastLoginAt } = useAuth()
   const { config, syncing, error, saveToDrive, loadFromDrive } = useConfig()
 
   return (
     <Box>
-      <AppBar position="static">
-        <Toolbar>
-          <Tooltip title="Volver">
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={() => navigate('/')}
-              aria-label="Volver"
-              sx={{ mr: 1 }}
-            >
-              <ArrowBackIcon />
-            </IconButton>
-          </Tooltip>
-          <Typography variant="h6" component="div">
-            Configuración
-          </Typography>
-        </Toolbar>
-      </AppBar>
+      <Navbar title="Configuración" showBack />
 
       <Container sx={{ py: 4 }}>
         <Card sx={{ maxWidth: 520 }}>
