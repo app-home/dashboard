@@ -72,6 +72,8 @@ export function requestTokensPKCE(scope: string = LOGIN_SCOPES): Promise<TokenRe
       return
     }
 
+    const origin = window.location.origin
+
     const params = new URLSearchParams({
       client_id: CLIENT_ID,
       redirect_uri: 'postmessage',
@@ -80,6 +82,7 @@ export function requestTokensPKCE(scope: string = LOGIN_SCOPES): Promise<TokenRe
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
       state,
+      origin,
       access_type: 'offline',
     })
 
