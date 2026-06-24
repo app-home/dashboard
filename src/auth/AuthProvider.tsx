@@ -4,9 +4,8 @@ import { AuthContext } from '@/auth/context'
 import type { AuthUser } from '@/auth/context'
 import {
   fetchGoogleProfile,
-  loadGis,
   LOGIN_SCOPES,
-  requestAccessToken,
+  requestTokensPKCE,
   revokeAccessToken,
 } from '@/auth/google'
 import { getUserPermissions } from '@/auth/permissions'
@@ -14,6 +13,8 @@ import { DRIVE_APPDATA_SCOPE } from '@/storage/driveConfig'
 
 const STORAGE_KEY = 'dashboard.auth.user'
 const LAST_LOGIN_KEY = 'dashboard.auth.lastLogin'
+
+const ID_TOKEN_KEY = 'dashboard.auth.idToken'
 
 /** Lee el perfil guardado para mantener la sesión visible tras recargar. */
 function readStoredUser(): AuthUser | null {
@@ -33,9 +34,12 @@ function readStoredUser(): AuthUser | null {
 }
 
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
-  // El perfil se persiste; el access token vive solo en memoria (caduca en ~1h).
+  // El access token vive solo en memoria (caduca en ~1h); el idToken se persiste.
   const [user, setUser] = useState<AuthUser | null>(readStoredUser)
   const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [idToken, setIdToken] = useState<string | null>(() =>
+    localStorage.getItem(ID_TOKEN_KEY),
+  )
   const [lastLoginAt, setLastLoginAt] = useState<string | null>(() =>
     localStorage.getItem(LAST_LOGIN_KEY),
   )
@@ -44,9 +48,8 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const login = useCallback(async () => {
     setLoading(true)
     try {
-      await loadGis()
       const scopes = `${LOGIN_SCOPES} ${DRIVE_APPDATA_SCOPE}`
-      const token = await requestAccessToken(scopes)
+      const { accessToken: token, idToken } = await requestTokensPKCE(scopes)
       const profile = await fetchGoogleProfile(token)
       const { role, permissions } = await getUserPermissions(profile.email)
       const now = new Date().toISOString()
@@ -56,9 +59,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         permissions,
       }
       setAccessToken(token)
+      setIdToken(idToken || null)
       setUser(userWithPermissions)
       setLastLoginAt(now)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userWithPermissions))
+      if (idToken) localStorage.setItem(ID_TOKEN_KEY, idToken)
       localStorage.setItem(LAST_LOGIN_KEY, now)
     } finally {
       setLoading(false)
@@ -68,9 +73,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const logout = useCallback(() => {
     if (accessToken) revokeAccessToken(accessToken)
     setAccessToken(null)
+    setIdToken(null)
     setUser(null)
     setLastLoginAt(null)
     localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(ID_TOKEN_KEY)
     localStorage.removeItem(LAST_LOGIN_KEY)
   }, [accessToken])
 
@@ -80,11 +87,12 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       isAuthenticated: user !== null,
       loading,
       accessToken,
+      idToken,
       lastLoginAt,
       login,
       logout,
     }),
-    [user, loading, accessToken, lastLoginAt, login, logout],
+    [user, loading, accessToken, idToken, lastLoginAt, login, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

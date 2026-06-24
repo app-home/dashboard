@@ -1,14 +1,14 @@
 /**
- * Integración con Google Identity Services (GIS), 100% client-side.
+ * Integración con Google OAuth 2.0 vía PKCE (Authorization Code + PKCE).
  *
- * Usa el "token model" (`initTokenClient`): un access token que sirve tanto
- * para obtener el perfil del usuario (login) como, más adelante, para pedir
- * scopes adicionales de Drive de forma incremental (issue #5).
+ * Usa un popup con redirect_uri=postmessage y el endpoint de token de Google
+ * para obtener access_token e id_token en un solo flujo.
  */
 
-const GIS_SRC = 'https://accounts.google.com/gsi/client'
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const USERINFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo'
+const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
+const TOKEN_URL = 'https://oauth2.googleapis.com/token'
 
 /** Scopes mínimos para el login (perfil + email). */
 export const LOGIN_SCOPES = 'openid email profile'
@@ -19,57 +19,143 @@ export interface GoogleProfile {
   picture?: string
 }
 
-let gisPromise: Promise<void> | null = null
+export interface TokenResponse {
+  accessToken: string
+  idToken: string
+}
 
-/** Carga el script de GIS una sola vez y resuelve cuando está disponible. */
-export function loadGis(): Promise<void> {
-  if (gisPromise) return gisPromise
+function base64urlEncode(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+}
 
-  gisPromise = new Promise<void>((resolve, reject) => {
-    if (typeof google !== 'undefined' && google.accounts?.oauth2) {
-      resolve()
-      return
-    }
-    const script = document.createElement('script')
-    script.src = GIS_SRC
-    script.async = true
-    script.defer = true
-    script.onload = () => resolve()
-    script.onerror = () =>
-      reject(new Error('No se pudo cargar Google Identity Services'))
-    document.head.appendChild(script)
-  })
+function generateCodeVerifier(): string {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  return base64urlEncode(array.buffer)
+}
 
-  return gisPromise
+async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(verifier)
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  return base64urlEncode(digest)
 }
 
 /**
- * Solicita un access token vía el token model de GIS.
- * Debe llamarse tras `loadGis()` y en respuesta a un gesto del usuario (click).
+ * Abre un popup de Google OAuth con PKCE y devuelve accessToken + idToken.
+ * Debe llamarse en respuesta a un gesto del usuario (click) para evitar
+ * bloqueo de popups.
  */
-export function requestAccessToken(scope: string = LOGIN_SCOPES): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
+export function requestTokensPKCE(scope: string = LOGIN_SCOPES): Promise<TokenResponse> {
+  return new Promise<TokenResponse>(async (resolve, reject) => {
     if (!CLIENT_ID) {
       reject(new Error('Falta configurar VITE_GOOGLE_CLIENT_ID'))
       return
     }
 
-    const tokenClient = google.accounts.oauth2.initTokenClient({
+    const state = generateCodeVerifier()
+    const codeVerifier = generateCodeVerifier()
+    let codeChallenge: string
+
+    try {
+      codeChallenge = await generateCodeChallenge(codeVerifier)
+    } catch {
+      reject(new Error('Error al generar code challenge'))
+      return
+    }
+
+    const params = new URLSearchParams({
       client_id: CLIENT_ID,
+      redirect_uri: 'postmessage',
+      response_type: 'code',
       scope,
-      callback: (response) => {
-        if (response.error) {
-          reject(new Error(response.error))
-          return
-        }
-        resolve(response.access_token)
-      },
-      error_callback: (error) => {
-        reject(new Error(error.message || 'Autorización cancelada'))
-      },
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+      state,
+      access_type: 'offline',
     })
 
-    tokenClient.requestAccessToken()
+    const popup = window.open(
+      `${AUTH_URL}?${params.toString()}`,
+      'google-oauth',
+      'width=500,height=700',
+    )
+
+    if (!popup) {
+      reject(new Error('El navegador bloqueó el popup. Permite popups e intenta de nuevo.'))
+      return
+    }
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== 'https://accounts.google.com') return
+      if (event.source !== popup) return
+
+      const data = event.data
+      if (data?.type !== 'authorization_response') return
+
+      window.removeEventListener('message', handleMessage)
+
+      if (data.error) {
+        reject(new Error(data.error))
+        return
+      }
+
+      const code = data.code
+      if (!code) {
+        reject(new Error('No se recibió el código de autorización'))
+        return
+      }
+
+      if (data.state !== state) {
+        reject(new Error('State mismatch — posible ataque CSRF'))
+        return
+      }
+
+      fetch(TOKEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: CLIENT_ID,
+          redirect_uri: 'postmessage',
+          grant_type: 'authorization_code',
+          code_verifier: codeVerifier,
+        }),
+      })
+        .then((res) => res.json())
+        .then((tokenData: Record<string, unknown>) => {
+          if (tokenData.error) {
+            reject(new Error(String(tokenData.error)))
+            return
+          }
+          resolve({
+            accessToken: tokenData.access_token as string,
+            idToken: (tokenData.id_token as string) ?? '',
+          })
+        })
+        .catch(() => reject(new Error('Error al intercambiar el código por tokens')))
+        .finally(() => {
+          try { popup.close() } catch { /* ignore */ }
+        })
+    }
+
+    window.addEventListener('message', handleMessage)
+
+    const poll = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(poll)
+        window.removeEventListener('message', handleMessage)
+        reject(new Error('Ventana de autenticación cerrada por el usuario'))
+      }
+    }, 500)
   })
 }
 
