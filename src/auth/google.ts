@@ -153,12 +153,24 @@ export function requestTokensPKCE(scope: string = LOGIN_SCOPES): Promise<TokenRe
     window.addEventListener('message', handleMessage)
 
     const poll = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(poll)
-        window.removeEventListener('message', handleMessage)
-        reject(new Error('Ventana de autenticación cerrada por el usuario'))
+      try {
+        if (popup.closed) {
+          clearInterval(poll)
+          window.removeEventListener('message', handleMessage)
+          reject(new Error('Ventana de autenticación cerrada por el usuario'))
+        }
+      } catch {
+        // COOP bloquea acceso a popup.closed, seguimos esperando
       }
     }, 500)
+
+    // Timeout de seguridad para no dejar la promesa colgada
+    setTimeout(() => {
+      clearInterval(poll)
+      window.removeEventListener('message', handleMessage)
+      try { popup.close() } catch { /* ignore */ }
+      reject(new Error('Tiempo de espera agotado para la autenticación'))
+    }, 5 * 60 * 1000)
   })
 }
 
